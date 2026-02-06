@@ -15,10 +15,6 @@ This project uses [Nix](https://nixos.org/) for dependency management.
     ```bash
     nix develop
     ```
-3.  Install dependencies:
-    ```bash
-    make install-deps
-    ```
 
 ## Usage
 
@@ -48,7 +44,7 @@ make serve
 
 ## Configuration
 
-You can provide your Calimoto credentials in a `.credentials` file in the root directory (JSON format) or via environment variables.
+For testing, you can provide your Calimoto credentials in a `.credentials` file in the root directory (JSON format) or via environment variables.
 
 ### .credentials file
 ```json
