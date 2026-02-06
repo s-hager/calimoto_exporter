@@ -32,10 +32,9 @@
         ];
       };
       pythonEnv = pkgs.python313.withPackages (ps: [
-        # ps.playwright
         ps.aiohttp
+        # ps.httpx
         ps.flet
-        # ps.flet-desktop
         ps.flet-cli
       ]);
     in {
@@ -45,19 +44,17 @@
           devenv
           direnv
           pythonEnv
-          # pkgs.playwright
-          # pkgs.flutter
-          # pkgs.jdk17
-          # pkgs.flet-client-flutter
+          # clang
+          # ninja
+          # pkg-config
+          # gtk3
+          # pcre
         ];
         shellHook = ''
           echo "Welcome to the devShell!" | ${pkgs.lolcat}/bin/lolcat
           echo "Run 'echo \"use flake\" > .envrc' to enable direnv" | ${pkgs.lolcat}/bin/lolcat
           echo "Use 'direnv allow' to automatically load this environment" | ${pkgs.lolcat}/bin/lolcat
-          # export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
-          # export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
         '';
-          # exec zsh -c 'echo "Welcome to the devShell!"'
       };
     };
 }

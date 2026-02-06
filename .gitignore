@@ -1,3 +1,5 @@
 .direnv
 .credentials
 build
+__pycache__
+__pypackages__

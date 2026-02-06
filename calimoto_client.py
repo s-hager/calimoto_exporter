@@ -3,7 +3,7 @@ import json
 import re
 import os
 import uuid
-import aiohttp
+import httpx
 from datetime import datetime, timedelta
 
 # Configuration
@@ -11,7 +11,7 @@ CREDENTIALS_FILE = '.credentials'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 
 class CalimotoClient:
-    def __init__(self, log_callback=None):
+    def __init__(self):
         self.email = None
         self.password = None
         self.app_id = None
@@ -19,29 +19,17 @@ class CalimotoClient:
         self.session_token = None
         self.user_id = None
         self.installation_id = None
-        self.session = None
-        self.log_callback = log_callback
-
-    def log(self, message):
-        if self.log_callback:
-            self.log_callback(message)
-        else:
-            print(message)
+        self.client = httpx.AsyncClient(headers={'User-Agent': USER_AGENT}, follow_redirects=True)
 
     async def __aenter__(self):
-        await self.initialize()
         return self
 
-    async def initialize(self):
-        if self.session is None or self.session.closed:
-            self.session = aiohttp.ClientSession(headers={'User-Agent': USER_AGENT})
-        self._load_credentials()
-
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.session:
-            await self.session.close()
+        if self.client:
+            await self.client.aclose()
 
-    def _load_credentials(self):
+    def load_credentials_from_env_or_file(self):
+        """Loads credentials, returning True if found, False otherwise."""
         self.email = os.environ.get('CALIMOTO_USERNAME')
         self.password = os.environ.get('CALIMOTO_PASSWORD')
 
@@ -53,24 +41,23 @@ class CalimotoClient:
                         self.email = data.get('email', self.email)
                         self.password = data.get('password', self.password)
             except Exception as e:
-                self.log(f"Warning: Could not read credentials file: {e}")
-        
-        # We don't raise here, to allow the UI to handle missing credentials if needed
-        # but the original script raised. Let's keep it lenient for the class.
-        if not self.email or not self.password:
-             self.log("Warning: Credentials missing in environment or file.")
+                pass # Silent fail, let the caller handle missing creds if needed
+
+        return bool(self.email and self.password)
+
+    def set_credentials(self, email, password):
+        self.email = email
+        self.password = password
 
     async def _extract_keys(self):
-        self.log("Extracting Parse keys from scripts...")
         base_url = "https://calimoto.com"
         start_url = f"{base_url}/en/motorcycle-trip-planner"
         
         try:
-            async with self.session.get(start_url) as response:
-                if response.status != 200:
-                    self.log(f"Failed to load homepage: {response.status}")
-                    return False
-                html = await response.text()
+            response = await self.client.get(start_url)
+            if response.status_code != 200:
+                raise Exception(f"Failed to load homepage: {response.status_code}")
+            html = response.text
                 
             script_urls = re.findall(r'<script[^>]+src=["\']([^"\']+)["\']', html)
             target_scripts = [s for s in script_urls if s.startswith('/') or s.startswith(base_url)]
@@ -83,42 +70,37 @@ class CalimotoClient:
                 nonlocal found
                 if found: return
                 try:
-                    async with self.session.get(url) as resp:
-                        if resp.status == 200:
-                            text = await resp.text()
-                            regex = r"appId\s*:\s*['\"]([^'\"]+)['\"]\s*,\s*key\s*:\s*['\"]([^'\"]+)['\"]"
-                            match = re.search(regex, text)
-                            if match:
-                                self.app_id = match.group(1)
-                                self.js_key = match.group(2)
-                                found = True
+                    resp = await self.client.get(url)
+                    if resp.status_code == 200:
+                        text = resp.text
+                        regex = r"appId\s*:\s*['\"]([^'\"]+)['\"]\s*,\s*key\s*:\s*['\"]([^'\"]+)['\"]"
+                        match = re.search(regex, text)
+                        if match:
+                            self.app_id = match.group(1)
+                            self.js_key = match.group(2)
+                            found = True
                 except Exception:
                     pass
 
+            # httpx is async but we need to run these concurrently
+            # standard asyncio.gather works with coroutines
             tasks = [scan_script(url) for url in target_scripts]
             await asyncio.gather(*tasks)
             return bool(self.app_id and self.js_key)
 
         except Exception as e:
-            self.log(f"Error extracting keys: {e}")
-            return False
+            raise Exception(f"Error extracting keys: {e}")
 
-    async def login(self, email=None, password=None):
-        if email: self.email = email
-        if password: self.password = password
-
+    async def login(self):
         if not self.email or not self.password:
-            self.log("Error: No credentials provided.")
-            return False
+             raise ValueError("Credentials not set.")
 
         if not await self._extract_keys():
-            self.log("Critical Error: Could not extract Parse keys.")
-            return False
+            raise Exception("Could not extract Parse keys from calimoto.com")
 
         if not self.installation_id:
             self.installation_id = str(uuid.uuid4())
 
-        self.log(f"Logging in directly via API as {self.email}...")
         url = "https://parse-server.prod.calimoto.com/parse/login"
         headers = {
             'Content-Type': 'text/plain',
@@ -135,30 +117,23 @@ class CalimotoClient:
         }
 
         try:
-            async with self.session.post(url, json=payload, headers=headers) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    self.user_id = data.get('objectId')
-                    self.session_token = data.get('sessionToken')
-                    self.log(f"Login successful! User ID: {self.user_id}")
-                    return True
-                else:
-                    self.log(f"Login Error {response.status}: {await response.text()}")
-                    return False
+            response = await self.client.post(url, json=payload, headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                self.user_id = data.get('objectId')
+                self.session_token = data.get('sessionToken')
+                return True
+            else:
+                raise Exception(f"Login Error {response.status_code}: {response.text}")
         except Exception as e:
-            self.log(f"Login request failed: {e}")
-            return False
+            raise e
 
     async def _handle_auth_error(self):
-        self.log("Session expired or invalid (Error 209/401). Retrying login...")
         self.session_token = None
         return await self.login()
 
     async def get_items(self, mode="routes", retry=True):
-        if not self.user_id or not self.session_token:
-            self.log("Not logged in.")
-            return []
-
+        """Returns a list of items (routes or tracks)."""
         class_name = "tblRoutes" if mode == "routes" else "tblTracks"
         url = f"https://parse-server.prod.calimoto.com/parse/classes/{class_name}"
         headers = {'Content-Type': 'text/plain'}
@@ -174,95 +149,73 @@ class CalimotoClient:
             "_InstallationId": self.installation_id
         }
 
-        self.log(f"Fetching {mode} for user {self.user_id}...")
         try:
-            async with self.session.post(url, json=payload, headers=headers) as response:
-                if response.status == 200:
-                    data = await response.json(content_type=None)
-                    return data.get("results", [])
-                elif response.status in [400, 401, 403]:
-                    text = await response.text()
-                    if "209" in text or "invalid session" in text.lower():
-                        if retry and await self._handle_auth_error():
-                            return await self.get_items(mode, retry=False)
-                    self.log(f"API Error {response.status}: {text}")
-                    return []
-                else:
-                    self.log(f"API Error {response.status}: {await response.text()}")
-                    return []
+            response = await self.client.post(url, json=payload, headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("results", [])
+            elif response.status_code in [400, 401, 403]:
+                text = response.text
+                if "209" in text or "invalid session" in text.lower():
+                    if retry and await self._handle_auth_error():
+                        return await self.get_items(mode, retry=False)
+                raise Exception(f"API Error {response.status_code}: {text}")
+            else:
+                raise Exception(f"API Error {response.status_code}: {response.text}")
         except Exception as e:
-            self.log(f"Request failed: {e}")
-            return []
+            raise e
 
-    async def download_gpx(self, item, mode="routes", output_file=None):
+    async def get_gpx_content(self, item, mode="routes"):
+        """Fetches data and returns the GPX string content."""
         name = item.get('name', 'Unnamed')
         points_url = item.get('points', {}).get('url')
         
         if not points_url:
-            self.log("No points URL found.")
-            return None
+            raise ValueError("No points URL found.")
 
-        try:
-            self.log(f"Fetching points from {points_url}...")
-            # Fetch points
-            async with self.session.get(points_url) as r:
-                points_data = await r.json(content_type=None)
-                points = points_data.get("points", [])
+        # Fetch points
+        response = await self.client.get(points_url)
+        points_data = response.json()
+        points = points_data.get("points", [])
 
-            altitudes = []
-            timestamps = []
-            speeds = []
-            start_date = None
+        altitudes = []
+        timestamps = []
+        speeds = []
+        start_date = None
 
-            # For tracks, fetch extra data
-            if mode == "tracks":
-                alt_url = item.get('altitudes', {}).get('url')
-                date_url = item.get('dates', {}).get('url')
-                speed_url = item.get('speeds', {}).get('url')
-                
-                # Parse base time
-                created_at = item.get('timeCreated', {}).get('iso')
-                if created_at:
-                    try:
-                        start_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                    except Exception as e:
-                        self.log(f"Warning: Could not parse start date: {e}")
+        # For tracks, fetch extra data
+        if mode == "tracks":
+            alt_url = item.get('altitudes', {}).get('url')
+            date_url = item.get('dates', {}).get('url')
+            speed_url = item.get('speeds', {}).get('url')
+            
+            # Parse base time
+            created_at = item.get('timeCreated', {}).get('iso')
+            if created_at:
+                try:
+                    start_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                except Exception:
+                    pass
 
-                if alt_url:
-                    self.log(f"Fetching altitudes from {alt_url}...")
-                    async with self.session.get(alt_url) as r:
-                        alt_data = await r.json(content_type=None)
-                        altitudes = alt_data.get("altitudes", [])
-                
-                if date_url:
-                    self.log(f"Fetching dates from {date_url}...")
-                    async with self.session.get(date_url) as r:
-                        date_data = await r.json(content_type=None)
-                        timestamps = date_data.get("dates", [])
-                        
-                if speed_url:
-                    self.log(f"Fetching speeds from {speed_url}...")
-                    async with self.session.get(speed_url) as r:
-                        speed_data = await r.json(content_type=None)
-                        speeds = speed_data.get("speeds", [])
+            if alt_url:
+                r = await self.client.get(alt_url)
+                alt_data = r.json()
+                altitudes = alt_data.get("altitudes", [])
+            
+            if date_url:
+                r = await self.client.get(date_url)
+                date_data = r.json()
+                timestamps = date_data.get("dates", [])
+                    
+            if speed_url:
+                r = await self.client.get(speed_url)
+                speed_data = r.json()
+                speeds = speed_data.get("speeds", [])
 
-            if points:
-                gpx_content = self._convert_to_gpx(points, name, altitudes, timestamps, speeds, start_date)
-                
-                if output_file:
-                    with open(output_file, "w", encoding='utf-8') as f:
-                        f.write(gpx_content)
-                    self.log(f"SUCCESS: GPX file saved to {os.path.abspath(output_file)}")
-                    return output_file
-                else:
-                    return gpx_content
-            else:
-                self.log("Invalid points data format received.")
-                return None
-
-        except Exception as e:
-            self.log(f"Error fetching/saving GPX: {e}")
-            return None
+        if points:
+            return self._convert_to_gpx(points, name, altitudes, timestamps, speeds, start_date)
+        else:
+            raise ValueError("Invalid points data format received.")
 
     @staticmethod
     def sanitize_filename(name):
