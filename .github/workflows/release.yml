@@ -20,6 +20,8 @@ jobs:
       # The flake provides python with flet, but make build-apk installs more deps via pip into __pypackages__
       # We just run the make command inside the nix develop environment
       - name: Build APK
+        env:
+          CI: true
         run: nix develop --command make apk
 
       - name: Create Release
