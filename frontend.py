@@ -6,33 +6,80 @@ from calimoto_client import CalimotoClient
 
 async def main(page: ft.Page):
     page.title = "Calimoto Exporter"
-    page.theme_mode = ft.ThemeMode.DARK
+    page.window_icon = "icon.png"
+    # page.theme_mode = ft.ThemeMode.DARK # will be adaptive
     page.padding = 20
     
     # Client instance
     client = CalimotoClient()
     
+    class StatusText(ft.Text):
+        def show_status(self, message):
+            self.value = message
+            self.color = None
+            if self.page:
+                self.update()
+
+        def show_error(self, message, error=None):
+            if error:
+                self.value = f"{message}: {error}"
+            else:
+                self.value = message
+            self.color = ft.Colors.RED
+            if self.page:
+                self.update()
+
+        def clear(self):
+            self.value = ""
+            if self.page:
+                self.update()
+    
     # State
     current_items = []
+    
+    # Download state (since FilePicker is async)
+    class DownloadState:
+        content = None
+        filename = None
+        
+    download_state = DownloadState()
+    
+    def on_save_result(e: ft.FilePickerResultEvent):
+        # Note: on desktop, save_file only returns the path. We must write the file manually.
+        if e.path:
+            try:
+                with open(e.path, "w", encoding="utf-8") as f:
+                    f.write(download_state.content)
+                status_text.show_status(f"Saved to {e.path}")
+            except Exception as ex:
+                status_text.show_error(f"Failed to save to {e.path}", ex)
+            finally:
+                download_state.content = None # Clear memory
+        else:
+            status_text.show_status("Save cancelled")
+            download_state.content = None # Clear memory
+            
+    file_picker = ft.FilePicker(on_result=on_save_result)
+    page.overlay.append(file_picker)
+
     
     # Components
     
     # --- Login View ---
     email_input = ft.TextField(label="Email", width=300)
     password_input = ft.TextField(label="Password", password=True, can_reveal_password=True, width=300)
-    login_error = ft.Text(color=ft.Colors.RED)
+    login_error = StatusText()
     
     async def handle_login(e):
         login_button.disabled = True
-        login_error.value = "Logging in..."
-        page.update()
+        login_error.show_status("Logging in...")
         
         client.set_credentials(email_input.value, password_input.value)
         try:
             await client.login()
             page.go("/dashboard")
         except Exception as ex:
-            login_error.value = f"Login failed: {ex}"
+            login_error.show_error("Login failed", ex)
             login_button.disabled = False
             page.update()
 
@@ -64,10 +111,10 @@ async def main(page: ft.Page):
     # --- Dashboard View ---
     
     items_list = ft.ListView(expand=True, spacing=10)
-    status_text = ft.Text()
+    status_text = StatusText()
     
     async def load_items(mode):
-        status_text.value = f"Loading {mode}..."
+        status_text.show_status(f"Loading {mode}...")
         items_list.controls.clear()
         page.update()
         
@@ -113,10 +160,10 @@ async def main(page: ft.Page):
                 )
                 items_list.controls.append(tile)
             
-            status_text.value = f"Found {len(items)} {mode}"
+            status_text.show_status(f"Found {len(items)} {mode}")
             
         except Exception as ex:
-            status_text.value = f"Error: {ex}"
+            status_text.show_error("Error", ex)
         
         page.update()
 
@@ -126,19 +173,19 @@ async def main(page: ft.Page):
             safe_name = client.sanitize_filename(name)
             filename = f"{safe_name}_{mode[:-1]}.gpx"
             
-            status_text.value = f"Downloading {filename}..."
-            page.update()
+            status_text.show_status(f"Downloading {filename}...")
             
             gpx_content = await client.get_gpx_content(item, mode)
             
-            # Encode content for download
-            b64_content = base64.b64encode(gpx_content.encode('utf-8')).decode('utf-8')
-            data_url = f"data:application/gpx+xml;base64,{b64_content}"
-            await page.launch_url(data_url)
-            status_text.value = f"Downloaded {filename}"
+            # Prepare content for download handler
+            download_state.content = gpx_content
+            download_state.filename = filename 
+            
+            file_picker.save_file(file_name=filename, allowed_extensions=["gpx"])
+            status_text.show_status(f"Select location to save {filename}...")
             
         except Exception as ex:
-            status_text.value = f"Download failed: {ex}"
+            status_text.show_error("Download failed", ex)
         page.update()
 
     async def on_nav_change(e):
@@ -212,4 +259,4 @@ async def main(page: ft.Page):
 
     page.go(page.route)
 
-ft.app(target=main)
+ft.app(target=main, assets_dir="assets")

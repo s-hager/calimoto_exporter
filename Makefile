@@ -1,20 +1,26 @@
-.PHONY: run-local run-web build clean install-deps serve
+EXCLUDES := .git,__pycache__,.direnv,build,.credentials,.envrc,.gitignore,flake.lock,flake.nix,Makefile,README.md
+
+.PHONY: run run-web build-web apk debug-apk clean install-deps
 
 # Default target
-run-local:
+run:
 	flet run frontend.py
 
 run-web:
 	flet run --web frontend.py
 
 install-deps:
-	mkdir -p __pypackages__ && nix-shell -p python3Packages.pip --run "pip install -r requirements.txt --target __pypackages__ --upgrade"
+	mkdir -p __pypackages__ && pip install -r requirements.txt --target __pypackages__ --upgrade
 
-build: install-deps
-	rm -rf build && flet build web --module-name frontend --exclude .direnv,.git,.direnv,.gitignore,.credentials,.envrc,__pycache__,build,flake.nix,flake.lock,README.md
+# does not work because of CORS
+build-web: install-deps
+	flet build web --module-name frontend --exclude $(EXCLUDES)
 
-serve:
-	python3 -m http.server --directory build/web 8000
+apk: install-deps
+	flet build apk --module-name frontend --exclude $(EXCLUDES)
+
+debug-apk: install-deps
+	flet build apk --flutter-build-args="--debug" --module-name frontend --exclude $(EXCLUDES)
 
 clean:
 	rm -rf build

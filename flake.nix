@@ -8,6 +8,11 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs {
         inherit system;
+        # overlay to fix flet issue:
+        # > pkgs.buildEnv error: two given paths contain a conflicting subpath:
+        # >   `/nix/store/5rgpiz9ld6cz0wdxp9vxlhaxr8m2pbpk-python3.13-flet-cli-0.28.3/bin/flet' and
+        # >   `/nix/store/mzz9p08454rfhvi9z6mv0nwax0l8ixn4-python3.13-flet-0.28.3/bin/flet'
+        # > hint: this may be caused by two different versions of the same package in buildEnv's `paths` parameter
         overlays = [
           (final: prev: {
             python313 = prev.python313.override {
@@ -36,6 +41,7 @@
         # ps.httpx
         ps.flet
         ps.flet-cli
+        ps.pip
       ]);
     in {
       devShells.x86_64-linux.default = pkgs.mkShell {
@@ -44,11 +50,6 @@
           devenv
           direnv
           pythonEnv
-          # clang
-          # ninja
-          # pkg-config
-          # gtk3
-          # pcre
         ];
         shellHook = ''
           echo "Welcome to the devShell!" | ${pkgs.lolcat}/bin/lolcat
