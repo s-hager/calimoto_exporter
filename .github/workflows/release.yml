@@ -22,7 +22,7 @@ jobs:
       - name: Build APK
         env:
           CI: true
-        run: nix develop --command make apk
+        run: nix develop --command yes | make apk
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
