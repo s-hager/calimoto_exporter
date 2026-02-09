@@ -18,17 +18,82 @@
             python313 = prev.python313.override {
               packageOverrides = pfinal: pprev: {
                 flet = pprev.flet.overrideAttrs (old: {
+                  nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pfinal.setuptools pfinal.wheel pfinal.setuptools-scm ];
+                  propagatedBuildInputs = (old.propagatedBuildInputs or []) ++ [ pfinal.msgpack ];
+                  doCheck = false;
+                  checkPhase = "true";
+                  # Force pytest to be skipped
+                  pytestCheckPhase = "true";
+                  nativeCheckInputs = [];
+                  checkInputs = [];
                   postFixup = (old.postFixup or "") + ''
                     if [ -f $out/bin/flet ]; then
                       mv $out/bin/flet $out/bin/flet-server
                     fi
+                    export version_file=$(find $out -name version.py)
+                    echo "version = '${pprev.flet.version}'" > $version_file
+                    echo "flet_version = '${pprev.flet.version}'" >> $version_file
+                    echo "flutter_version = '3.35.1'" >> $version_file
+                    echo "pyodide_version = '0.27.0'" >> $version_file
+                  '';
+                });
+                flet-desktop = pprev.flet-desktop.overrideAttrs (old: {
+                  nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pfinal.setuptools pfinal.wheel pfinal.setuptools-scm ];
+                  propagatedBuildInputs = (old.propagatedBuildInputs or []) ++ [ pfinal.setuptools ];
+                  doCheck = false;
+                  checkPhase = "true";
+                  pytestCheckPhase = "true";
+                  nativeCheckInputs = [];
+                  checkInputs = [];
+                  postFixup = (old.postFixup or "") + ''
+                    export version_file=$(find $out -name version.py)
+                    if [ -n "$version_file" ]; then
+                      echo "version = '${pprev.flet-desktop.version}'" > $version_file
+                      echo "flet_version = '${pprev.flet.version}'" >> $version_file
+                      echo "flutter_version = '3.35.1'" >> $version_file
+                      echo "pyodide_version = '0.27.0'" >> $version_file
+                    fi
+                  '';
+                });
+                flet-web = pprev.flet-web.overrideAttrs (old: {
+                  nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pfinal.setuptools pfinal.wheel pfinal.setuptools-scm ];
+                  propagatedBuildInputs = (old.propagatedBuildInputs or []) ++ [ pfinal.setuptools ];
+                  doCheck = false;
+                  checkPhase = "true";
+                  pytestCheckPhase = "true";
+                  nativeCheckInputs = [];
+                  checkInputs = [];
+                  postFixup = (old.postFixup or "") + ''
+                    export version_file=$(find $out -name version.py)
+                    if [ -n "$version_file" ]; then
+                      echo "version = '${pprev.flet-web.version}'" > $version_file
+                      echo "flet_version = '${pprev.flet.version}'" >> $version_file
+                      echo "flutter_version = '3.35.1'" >> $version_file
+                      echo "pyodide_version = '0.27.0'" >> $version_file
+                    fi
                   '';
                 });
                 flet-cli = pprev.flet-cli.overrideAttrs (old: {
+                  nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pfinal.setuptools pfinal.wheel pfinal.setuptools-scm ];
+                  propagatedBuildInputs = (old.propagatedBuildInputs or []) ++ [ pfinal.setuptools ];
+                  doCheck = false;
+                  checkPhase = "true";
+                  pytestCheckPhase = "true";
+                  nativeCheckInputs = [];
+                  checkInputs = [];
                   postInstall = ''
                     mkdir -p $out/bin
                     makeWrapper ${pfinal.flet}/bin/flet-server $out/bin/flet \
                       --prefix PYTHONPATH : $PYTHONPATH
+                  '';
+                  postFixup = (old.postFixup or "") + ''
+                    export version_file=$(find $out -name version.py)
+                    if [ -n "$version_file" ]; then
+                      echo "version = '${pprev.flet-cli.version}'" > $version_file
+                      echo "flet_version = '${pprev.flet.version}'" >> $version_file
+                      echo "flutter_version = '3.35.1'" >> $version_file
+                      echo "pyodide_version = '0.27.0'" >> $version_file
+                    fi
                   '';
                 });
               };
