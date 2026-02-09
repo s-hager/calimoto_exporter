@@ -49,7 +49,13 @@ class CalimotoClient:
         self.email = email
         self.password = password
 
+    async def initialize(self):
+        return await self._extract_keys()
+
     async def _extract_keys(self):
+        if self.app_id and self.js_key:
+            return True
+
         base_url = "https://calimoto.com"
         start_url = f"{base_url}/en/motorcycle-trip-planner"
         
@@ -95,7 +101,7 @@ class CalimotoClient:
         if not self.email or not self.password:
              raise ValueError("Credentials not set.")
 
-        if not await self._extract_keys():
+        if not await self.initialize():
             raise Exception("Could not extract Parse keys from calimoto.com")
 
         if not self.installation_id:

@@ -1,3 +1,5 @@
-flet==0.28.3
+# flet==0.28.3
+# flet==0.80.0
+flet==0.80.5
 # flet # current version of 0.80.5 does not work since our flet-cli in the flake is still using 0.28.3
 httpx

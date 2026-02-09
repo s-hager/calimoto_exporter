@@ -1,6 +1,8 @@
 import flet as ft
 import asyncio
 import base64
+import json
+from pathlib import Path
 
 from calimoto_client import CalimotoClient
 
@@ -37,75 +39,151 @@ async def main(page: ft.Page):
     # State
     current_items = []
     
-    # Download state (since FilePicker is async)
+    # Download state
     class DownloadState:
         content = None
         filename = None
         
     download_state = DownloadState()
-    
-    def on_save_result(e: ft.FilePickerResultEvent):
-        # Note: on desktop, save_file only returns the path. We must write the file manually.
-        if e.path:
-            try:
-                with open(e.path, "w", encoding="utf-8") as f:
-                    f.write(download_state.content)
-                status_text.show_status(f"Saved to {e.path}")
-            except Exception as ex:
-                status_text.show_error(f"Failed to save to {e.path}", ex)
-            finally:
-                download_state.content = None # Clear memory
-        else:
-            status_text.show_status("Save cancelled")
-            download_state.content = None # Clear memory
-            
-    file_picker = ft.FilePicker(on_result=on_save_result)
-    page.overlay.append(file_picker)
 
     
     # Components
     
+    # Function to clear session ( Logout )
+    async def logout(e=None):
+        # Clear session file
+        try:
+            session_file = Path.home() / ".calimoto_exporter_session"
+            if session_file.exists():
+                session_file.unlink()
+        except Exception:
+            pass
+        
+        # Clear client session
+        client.session_token = None
+        client.user_id = None
+        
+        # Clear UI (will be defined later)
+        items_list.controls.clear()
+        email_input.value = ""
+        password_input.value = ""
+        login_error.clear()
+        
+        # Show login screen (will be called later)
+        show_login()
+
+    # Check for stored session
+    async def check_session():
+        try:
+            session_file = Path.home() / ".calimoto_exporter_session"
+            if session_file.exists():
+                with open(session_file, "r") as f:
+                    session_data = json.load(f)
+                
+                # Restore session data
+                if session_data:
+                    # Restore cookies if they exist
+                    cookies = session_data.get("cookies", session_data)  # Backward compat
+                    if cookies:
+                        client.client.cookies.update(cookies)
+                    
+                    # Restore session token and user ID
+                    client.session_token = session_data.get("session_token")
+                    client.user_id = session_data.get("user_id")
+                    client.installation_id = session_data.get("installation_id")
+                    
+                    # We still need API keys
+                    try:
+                        await client.initialize()
+                        # Validate session by trying to fetch routes
+                        await client.get_items("routes") 
+                        # Session valid, show dashboard (which will load items and update status)
+                        await show_dashboard()
+                        return True
+                    except Exception as ex:
+                        # Session invalid or network error
+                        print(f"Session restoration failed: {ex}")
+                        await logout()
+        except Exception as ex:
+             print(f"Storage error: {ex}")
+        return False
+
+
+
     # --- Login View ---
     email_input = ft.TextField(label="Email", width=300)
     password_input = ft.TextField(label="Password", password=True, can_reveal_password=True, width=300)
     login_error = StatusText()
+
+    # Check if credentials exist in env/file to pre-fill
+    if client.load_credentials_from_env_or_file():
+        email_input.value = client.email
+        password_input.value = client.password
+
+    # We defer session check to after route setup
     
     async def handle_login(e):
         login_button.disabled = True
         login_error.show_status("Logging in...")
+        page.update()
         
-        client.set_credentials(email_input.value, password_input.value)
+        email = email_input.value
+        password = password_input.value
+        
+        # Set credentials on the client
+        client.email = email
+        client.password = password
+        
         try:
-            await client.login()
-            page.go("/dashboard")
+            if await client.login():
+                # Save session with all required data
+                try:
+                    session_data = {
+                        "cookies": dict(client.client.cookies),
+                        "session_token": client.session_token,
+                        "user_id": client.user_id,
+                        "installation_id": client.installation_id
+                    }
+                    session_file = Path.home() / ".calimoto_exporter_session"
+                    with open(session_file, "w") as f:
+                        json.dump(session_data, f)
+                except Exception as ex:
+                    print(f"Failed to save session: {ex}")
+                
+                # Show dashboard (will be defined later)
+                await show_dashboard()
+            else:
+                login_error.show_error("Login failed", "Check credentials")
+                login_button.disabled = False
+                page.update()
         except Exception as ex:
-            login_error.show_error("Login failed", ex)
+            login_error.show_error("Login failed", str(ex))
             login_button.disabled = False
             page.update()
 
-    login_button = ft.ElevatedButton("Login", on_click=handle_login)
+    login_button = ft.Button("Login", on_click=handle_login)
     
     login_view = ft.View(
         "/",
         [
-            ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Text("Calimoto Exporter", size=30, weight=ft.FontWeight.BOLD),
-                        ft.Text("Login to your account", size=16),
-                        email_input,
-                        password_input,
-                        login_button,
-                        login_error
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=20
-                ),
-                alignment=ft.alignment.center,
+            ft.Column(
+                [
+                    # ft.Text("Calimoto Exporter", size=30, weight=ft.FontWeight.BOLD, color="white"),
+                    # ft.Text("Login to your account", size=16, color="white"),
+                    ft.Text("Calimoto Exporter", size=30, weight=ft.FontWeight.BOLD),
+                    ft.Text("Login to your account", size=16),
+                    email_input,
+                    password_input,
+                    login_button,
+                    login_error
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=20,
                 expand=True
             )
-        ]
+        ],
+        # bgcolor="#2196F3"  # Blue background
     )
 
     # --- Dashboard View ---
@@ -155,7 +233,7 @@ async def main(page: ft.Page):
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN
                     ),
                     padding=10,
-                    border=ft.border.all(1, ft.Colors.GREY_800),
+                    border=ft.Border.all(1, ft.Colors.GREY_800),
                     border_radius=5,
                 )
                 items_list.controls.append(tile)
@@ -163,7 +241,12 @@ async def main(page: ft.Page):
             status_text.show_status(f"Found {len(items)} {mode}")
             
         except Exception as ex:
-            status_text.show_error("Error", ex)
+            if "invalid session" in str(ex).lower() or "209" in str(ex):
+                 status_text.show_error("Session expired", ex)
+                 await asyncio.sleep(2)
+                 await logout(None) # Pass None as event
+            else:
+                status_text.show_error("Error", ex)
         
         page.update()
 
@@ -174,15 +257,24 @@ async def main(page: ft.Page):
             filename = f"{safe_name}_{mode[:-1]}.gpx"
             
             status_text.show_status(f"Downloading {filename}...")
+            page.update()
             
             gpx_content = await client.get_gpx_content(item, mode)
             
-            # Prepare content for download handler
-            download_state.content = gpx_content
-            download_state.filename = filename 
-            
-            file_picker.save_file(file_name=filename, allowed_extensions=["gpx"])
             status_text.show_status(f"Select location to save {filename}...")
+            page.update()
+            
+            # On Linux, this control requires Zenity when running Flet as a desktop app. It is not required when running Flet in a browser.
+            path = await ft.FilePicker().save_file(
+                file_name=filename, 
+                allowed_extensions=["gpx"],
+                src_bytes=gpx_content.encode('utf-8')
+            )
+            
+            if path:
+                status_text.show_status(f"Saved to {path}")
+            else:
+                status_text.show_status("Save cancelled")
             
         except Exception as ex:
             status_text.show_error("Download failed", ex)
@@ -195,8 +287,8 @@ async def main(page: ft.Page):
     nav_rail = ft.NavigationRail(
         selected_index=0,
         label_type=ft.NavigationRailLabelType.ALL,
-        min_width=100,
-        min_extended_width=400,
+        min_width=50,
+        min_extended_width=200,
         destinations=[
             ft.NavigationRailDestination(
                 icon=ft.Icons.MAP, 
@@ -211,52 +303,69 @@ async def main(page: ft.Page):
         ],
         on_change=on_nav_change,
     )
-    
-    dashboard_view = ft.View(
-        "/dashboard",
+     
+    # Create dashboard controls
+    dashboard_container = ft.Row(
         [
-            ft.Row(
+            nav_rail,
+            ft.VerticalDivider(width=1),
+            ft.Column(
                 [
-                    nav_rail,
-                    ft.VerticalDivider(width=1),
-                    ft.Column(
-                        [
-                            ft.Text("Dashboard", size=24, weight=ft.FontWeight.BOLD),
-                            status_text,
-                            items_list
-                        ],
-                        expand=True,
-                        spacing=20
-                    )
+                    ft.Text("Dashboard", size=24, weight=ft.FontWeight.BOLD),
+                    ft.Button("Logout", on_click=logout, bgcolor=ft.Colors.RED_900, color=ft.Colors.WHITE),
+                    status_text,
+                    items_list
                 ],
-                expand=True
+                expand=True,
+                spacing=20
             )
-        ]
+        ],
+        expand=True
     )
-
-    async def route_change(route):
-        page.views.clear()
-        page.views.append(login_view)
-        if page.route == "/dashboard":
-            page.views.append(dashboard_view)
-            # Initial load
-            if not items_list.controls:
-                 await load_items("routes")
-        page.update()
-
-    async def view_pop(view):
-        page.views.pop()
-        top_view = page.views[-1]
-        page.go(top_view.route)
-
-    page.on_route_change = route_change
-    page.on_view_pop = view_pop
     
-    # Check if credentials exist in env/file to pre-fill
-    if client.load_credentials_from_env_or_file():
-        email_input.value = client.email
-        password_input.value = client.password
+    # Create login controls  
+    login_container = ft.Column(
+        [
+            ft.Text("Calimoto Exporter", size=32, weight=ft.FontWeight.BOLD),
+            ft.Text("Login to your account", size=16),
+            ft.Container(height=20),
+            email_input,
+            password_input,
+            login_button,
+            login_error
+        ],
+        alignment=ft.MainAxisAlignment.CENTER,
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        spacing=15,
+        expand=True
+    )
+    
+    # Main content container
+    main_content = ft.Container(expand=True)
+    
+    def show_login():
+        main_content.content = login_container
+        page.update()
+    
+    async def show_dashboard():
+        # Show dashboard UI first
+        main_content.content = dashboard_container
+        page.update()
+        
+        # Then load items
+        if not items_list.controls:
+            await load_items("routes")
+        # Final update after loading
+        page.update()
+    
+    # Setup page
+    page.padding = 20
+    page.add(main_content)
+    
+    # Start with login
+    show_login()
+    
+    # Attempt to restore session
+    await check_session()
 
-    page.go(page.route)
-
-ft.app(target=main, assets_dir="assets")
+ft.run(main, assets_dir="assets")
