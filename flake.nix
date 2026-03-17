@@ -155,7 +155,13 @@
             platformVersion = "36";
             abiVersion = "x86_64"; # armeabi-v7a, mips, x86_64
             systemImageType = "google_apis_playstore";
-            # enableGPU = true;
+            configOptions = {
+              "hw.keyboard" = "yes";
+              # Add custom screen dimensions here
+              "hw.lcd.width" = "1080";
+              "hw.lcd.height" = "1920";
+              "hw.lcd.density" = "420";
+            };
             # It is also possible to specify an APK to deploy inside the emulator and the package and activity names to launch it:
             # app = "MyApk.apk";
             # package = "com.rovio.angrybirds";
