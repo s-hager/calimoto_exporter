@@ -4,6 +4,8 @@ import base64
 import json
 from pathlib import Path
 
+import flet_secure_storage
+
 from calimoto_client import CalimotoClient
 
 async def main(page: ft.Page):
@@ -11,6 +13,8 @@ async def main(page: ft.Page):
     page.window_icon = "icon.png"
     # page.theme_mode = ft.ThemeMode.DARK # will be adaptive
     page.padding = 20
+    
+    secure_storage = flet_secure_storage.SecureStorage()
     
     # Client instance
     client = CalimotoClient()
@@ -51,7 +55,16 @@ async def main(page: ft.Page):
     
     # Function to clear session ( Logout )
     async def logout(e=None):
-        # Clear session file
+        # Clear securely stored credentials
+        try:
+            if await secure_storage.contains_key("calimoto_email"):
+                await secure_storage.remove("calimoto_email")
+            if await secure_storage.contains_key("calimoto_password"):
+                await secure_storage.remove("calimoto_password")
+        except Exception as ex:
+            print(f"Error removing secure credentials: {ex}")
+            
+        # Clear legacy session file
         try:
             session_file = Path.home() / ".calimoto_exporter_session"
             if session_file.exists():
@@ -75,39 +88,55 @@ async def main(page: ft.Page):
     # Check for stored session
     async def check_session():
         try:
+            # Check for securely stored credentials
+            stored_email = None
+            stored_password = None
+            try:
+                 stored_email = await secure_storage.get("calimoto_email")
+                 stored_password = await secure_storage.get("calimoto_password")
+            except Exception as e:
+                 print(f"Failed to read from secure storage: {e}")
+            
+            if stored_email and stored_password:
+                client.email = stored_email
+                client.password = stored_password
+                
+                try:
+                    login_error.show_status("Logging in automatically...")
+                    page.update()
+                    if await client.login():
+                        await show_dashboard()
+                        return True
+                    else:
+                        login_error.show_error("Auto-login failed", "Invalid credentials")
+                except Exception as ex:
+                    print(f"Auto-login error: {ex}")
+                    login_error.show_error("Auto-login failed", str(ex))
+                    
+            # Fallback code for legacy session format (transition)
             session_file = Path.home() / ".calimoto_exporter_session"
             if session_file.exists():
                 with open(session_file, "r") as f:
                     session_data = json.load(f)
-                
-                # Restore session data
                 if session_data:
-                    # Restore cookies if they exist
-                    cookies = session_data.get("cookies", session_data)  # Backward compat
+                    cookies = session_data.get("cookies", session_data)
                     if cookies:
                         client.client.cookies.update(cookies)
-                    
-                    # Restore session token and user ID
                     client.session_token = session_data.get("session_token")
                     client.user_id = session_data.get("user_id")
                     client.installation_id = session_data.get("installation_id")
-                    
-                    # We still need API keys
                     try:
                         await client.initialize()
-                        # Validate session by trying to fetch routes
                         await client.get_items("routes") 
-                        # Session valid, show dashboard (which will load items and update status)
                         await show_dashboard()
                         return True
                     except Exception as ex:
-                        # Session invalid or network error
-                        print(f"Session restoration failed: {ex}")
+                        print(f"Legacy session restoration failed: {ex}")
                         await logout()
+                        
         except Exception as ex:
              print(f"Storage error: {ex}")
         return False
-
 
 
     # --- Login View ---
@@ -136,19 +165,17 @@ async def main(page: ft.Page):
         
         try:
             if await client.login():
-                # Save session with all required data
+                login_error.show_status("Login successful! Saving credentials...")
+                page.update()
+                
+                # Store email and password securely
                 try:
-                    session_data = {
-                        "cookies": dict(client.client.cookies),
-                        "session_token": client.session_token,
-                        "user_id": client.user_id,
-                        "installation_id": client.installation_id
-                    }
-                    session_file = Path.home() / ".calimoto_exporter_session"
-                    with open(session_file, "w") as f:
-                        json.dump(session_data, f)
+                    await secure_storage.set("calimoto_email", email)
+                    await secure_storage.set("calimoto_password", password)
                 except Exception as ex:
-                    print(f"Failed to save session: {ex}")
+                    print(f"Failed to securely save credentials: {ex}")
+                    login_error.show_error("Warning", f"Could not save credentials: {ex}")
+                    page.update()
                 
                 # Show dashboard (will be defined later)
                 await show_dashboard()

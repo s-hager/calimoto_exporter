@@ -133,6 +133,26 @@
                     fi
                   '';
                 });
+                flet-secure-storage = pprev.buildPythonPackage rec {
+                  pname = "flet-secure-storage";
+                  version = "0.80.5";
+                  pyproject = true;
+                  src = pkgs.fetchurl {
+                    url = "https://files.pythonhosted.org/packages/10/d8/87cb3bc3014dd33fece945e6dd6db491e7544b968020abe7501a1f3d5a71/flet_secure_storage-0.80.5.tar.gz";
+                    sha256 = "bd92a12c974a6e875b74b79b448780143bb27f94c81ab8cae5da0ad3d4740f5a";
+                  };
+                  nativeBuildInputs = [ pfinal.setuptools pfinal.wheel pfinal.poetry-core ];
+                  dependencies = [ pfinal.flet ];
+                  
+                  pythonRemoveDeps = [ "flet" ];
+                  
+                  postPatch = ''
+                    sed -i -e 's/flet = "0.80.5"/flet = "*"/g' pyproject.toml || true
+                    sed -i -e 's/flet==0.80.5/flet/g' pyproject.toml || true
+                  '';
+                  
+                  doCheck = false;
+                };
               };
             };
           })
@@ -143,6 +163,7 @@
         # ps.httpx
         ps.flet
         ps.flet-cli
+        ps.flet-secure-storage
         ps.pip
         # ps.msgpack
       ]);
