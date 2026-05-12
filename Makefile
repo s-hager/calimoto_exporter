@@ -1,4 +1,4 @@
-EXCLUDES := .git,__pycache__,.direnv,build,.credentials,.envrc,.gitignore,flake.lock,flake.nix,Makefile,README.md
+EXCLUDES := .git,.github,__pycache__,.direnv,build,.credentials,.envrc,.gitignore,flake.lock,flake.nix,Makefile,README.md
 
 # Add --yes flag for non-interactive mode in CI/CD
 CI_FLAG := $(if $(CI),--yes,)
