@@ -17,7 +17,7 @@ async def main(page: ft.Page):
     if page.platform == ft.PagePlatform.LINUX:
         # saved to ~/.local/share/com.appveyor.flet/shared_preferences.json
         # or to ~/.local/share/com.yourname.calimotoexporter/shared_preferences.json
-        secure_storage = page.shared_preferences
+        secure_storage = ft.SharedPreferences()
     else:
         secure_storage = flet_secure_storage.SecureStorage()
     
@@ -107,7 +107,7 @@ async def main(page: ft.Page):
                 client.password = stored_password
                 
                 try:
-                    login_error.show_status("Logging in automatically...")
+                    login_error.show_status("Logging in with stored credentials...")
                     page.update()
                     if await client.login():
                         await show_dashboard()
@@ -316,6 +316,10 @@ async def main(page: ft.Page):
         mode = "routes" if e.control.selected_index == 0 else "tracks"
         await load_items(mode)
 
+    async def handle_refresh(e):
+        mode = "routes" if nav_rail.selected_index == 0 else "tracks"
+        await load_items(mode)
+
     nav_rail = ft.NavigationRail(
         selected_index=0,
         label_type=ft.NavigationRailLabelType.ALL,
@@ -343,8 +347,23 @@ async def main(page: ft.Page):
             ft.VerticalDivider(width=1),
             ft.Column(
                 [
-                    ft.Text("Dashboard", size=24, weight=ft.FontWeight.BOLD),
-                    ft.Button("Logout", on_click=logout, bgcolor=ft.Colors.RED_900, color=ft.Colors.WHITE),
+                    ft.Row(
+                        [
+                            ft.Text("Dashboard", size=24, weight=ft.FontWeight.BOLD),
+                            ft.Row(
+                                [
+                                    ft.IconButton(
+                                        icon=ft.Icons.REFRESH,
+                                        tooltip="Refresh list",
+                                        on_click=handle_refresh,
+                                    ),
+                                    ft.Button("Logout", on_click=logout, bgcolor=ft.Colors.RED_900, color=ft.Colors.WHITE),
+                                ],
+                                spacing=10,
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    ),
                     status_text,
                     items_list
                 ],
@@ -376,6 +395,7 @@ async def main(page: ft.Page):
     main_content = ft.Container(expand=True)
     
     def show_login():
+        login_button.disabled = False
         main_content.content = login_container
         page.update()
     
