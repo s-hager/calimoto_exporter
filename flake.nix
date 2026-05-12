@@ -23,8 +23,8 @@
     let
       system = "x86_64-linux";
       fletSrc = builtins.fetchTarball {
-        url = "https://github.com/flet-dev/flet/archive/refs/tags/v0.80.5.tar.gz";
-        sha256 = "1hj48zhs4fp57l9k4903wkffa7d24sr0hc3j97p1l1f8q50z1xf0";
+        url = "https://github.com/flet-dev/flet/archive/refs/tags/v0.85.0.tar.gz";
+        sha256 = "0c2dmrpnksvxbn21wx5gvnzscs515bghjh8sxwnmbw568i6bcqm6";
       };
       pkgs = import nixpkgs {
         inherit system;
@@ -43,7 +43,7 @@
             python313 = prev.python313.override {
               packageOverrides = pfinal: pprev: {
                 flet = pprev.flet.overrideAttrs (old: {
-                  version = "0.80.5";
+                  version = "0.85.0";
                   src = fletSrc;
                   sourceRoot = "source/sdk/python/packages/flet";
                   nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pfinal.setuptools pfinal.wheel pfinal.setuptools-scm ];
@@ -59,14 +59,14 @@
                       mv $out/bin/flet $out/bin/flet-server
                     fi
                     export version_file=$(find $out -name version.py)
-                    echo "version = '0.80.5'" > $version_file
-                    echo "flet_version = '0.80.5'" >> $version_file
-                    echo "flutter_version = '3.38.7'" >> $version_file
-                    echo "pyodide_version = '0.27.0'" >> $version_file
+                    echo "version = '0.85.0'" > $version_file
+                    echo "flet_version = '0.85.0'" >> $version_file
+                    echo "flutter_version = '3.41.7'" >> $version_file
+                    echo "pyodide_version = '0.27.7'" >> $version_file
                   '';
                 });
                 flet-desktop = pprev.flet-desktop.overrideAttrs (old: {
-                  version = "0.80.5";
+                  version = "0.85.0";
                   src = fletSrc;
                   sourceRoot = "source/sdk/python/packages/flet-desktop";
                   nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pfinal.setuptools pfinal.wheel pfinal.setuptools-scm ];
@@ -79,15 +79,15 @@
                   postFixup = (old.postFixup or "") + ''
                     export version_file=$(find $out -name version.py)
                     if [ -n "$version_file" ]; then
-                      echo "version = '0.80.5'" > $version_file
-                      echo "flet_version = '0.80.5'" >> $version_file
-                      echo "flutter_version = '3.38.7'" >> $version_file
-                      echo "pyodide_version = '0.27.0'" >> $version_file
+                      echo "version = '0.85.0'" > $version_file
+                      echo "flet_version = '0.85.0'" >> $version_file
+                      echo "flutter_version = '3.41.7'" >> $version_file
+                      echo "pyodide_version = '0.27.7'" >> $version_file
                     fi
                   '';
                 });
                 flet-web = pprev.flet-web.overrideAttrs (old: {
-                  version = "0.80.5";
+                  version = "0.85.0";
                   src = fletSrc;
                   sourceRoot = "source/sdk/python/packages/flet-web";
                   nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pfinal.setuptools pfinal.wheel pfinal.setuptools-scm ];
@@ -100,15 +100,15 @@
                   postFixup = (old.postFixup or "") + ''
                     export version_file=$(find $out -name version.py)
                     if [ -n "$version_file" ]; then
-                      echo "version = '0.80.5'" > $version_file
-                      echo "flet_version = '0.80.5'" >> $version_file
-                      echo "flutter_version = '3.38.7'" >> $version_file
-                      echo "pyodide_version = '0.27.0'" >> $version_file
+                      echo "version = '0.85.0'" > $version_file
+                      echo "flet_version = '0.85.0'" >> $version_file
+                      echo "flutter_version = '3.41.7'" >> $version_file
+                      echo "pyodide_version = '0.27.7'" >> $version_file
                     fi
                   '';
                 });
                 flet-cli = pprev.flet-cli.overrideAttrs (old: {
-                  version = "0.80.5";
+                  version = "0.85.0";
                   src = fletSrc;
                   sourceRoot = "source/sdk/python/packages/flet-cli";
                   nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pfinal.setuptools pfinal.wheel pfinal.setuptools-scm ];
@@ -126,20 +126,19 @@
                   postFixup = (old.postFixup or "") + ''
                     export version_file=$(find $out -name version.py)
                     if [ -n "$version_file" ]; then
-                      echo "version = '0.80.5'" > $version_file
-                      echo "flet_version = '0.80.5'" >> $version_file
-                      echo "flutter_version = '3.38.7'" >> $version_file
-                      echo "pyodide_version = '0.27.0'" >> $version_file
+                      echo "version = '0.85.0'" > $version_file
+                      echo "flet_version = '0.85.0'" >> $version_file
+                      echo "flutter_version = '3.41.7'" >> $version_file
                     fi
                   '';
                 });
                 flet-secure-storage = pprev.buildPythonPackage rec {
                   pname = "flet-secure-storage";
-                  version = "0.80.5";
+                  version = "0.85.0";
                   pyproject = true;
                   src = pkgs.fetchurl {
-                    url = "https://files.pythonhosted.org/packages/10/d8/87cb3bc3014dd33fece945e6dd6db491e7544b968020abe7501a1f3d5a71/flet_secure_storage-0.80.5.tar.gz";
-                    sha256 = "bd92a12c974a6e875b74b79b448780143bb27f94c81ab8cae5da0ad3d4740f5a";
+                    url = "https://files.pythonhosted.org/packages/54/a7/89a4d6fb8edd5f0f2c51ebeef418586084b965c2232700b27b993d51bed6/flet_secure_storage-0.85.0.tar.gz";
+                    sha256 = "77e0fd73cee6ff098cce5cd55fc94ee8a566a9d2c581f1c6a6dc311bfa4dcfbe";
                   };
                   nativeBuildInputs = [ pfinal.setuptools pfinal.wheel pfinal.poetry-core ];
                   dependencies = [ pfinal.flet ];
@@ -147,8 +146,8 @@
                   pythonRemoveDeps = [ "flet" ];
                   
                   postPatch = ''
-                    sed -i -e 's/flet = "0.80.5"/flet = "*"/g' pyproject.toml || true
-                    sed -i -e 's/flet==0.80.5/flet/g' pyproject.toml || true
+                    sed -i -e 's/flet = "0.85.0"/flet = "*"/g' pyproject.toml || true
+                    sed -i -e 's/flet==0.85.0/flet/g' pyproject.toml || true
                   '';
                   
                   doCheck = false;

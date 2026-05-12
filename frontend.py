@@ -14,7 +14,12 @@ async def main(page: ft.Page):
     # page.theme_mode = ft.ThemeMode.DARK # will be adaptive
     page.padding = 20
     
-    secure_storage = flet_secure_storage.SecureStorage()
+    if page.platform == ft.PagePlatform.LINUX:
+        # saved to ~/.local/share/com.appveyor.flet/shared_preferences.json
+        # or to ~/.local/share/com.yourname.calimotoexporter/shared_preferences.json
+        secure_storage = page.shared_preferences
+    else:
+        secure_storage = flet_secure_storage.SecureStorage()
     
     # Client instance
     client = CalimotoClient()
