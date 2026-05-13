@@ -45,17 +45,6 @@ async def main(page: ft.Page):
             if self.page:
                 self.update()
     
-    # State
-    current_items = []
-    
-    # Download state
-    class DownloadState:
-        content = None
-        filename = None
-        
-    download_state = DownloadState()
-
-    
     # Components
     
     # Function to clear session ( Logout )
@@ -145,8 +134,8 @@ async def main(page: ft.Page):
 
 
     # --- Login View ---
-    email_input = ft.TextField(label="Email", width=300)
-    password_input = ft.TextField(label="Password", password=True, can_reveal_password=True, width=300)
+    email_input = ft.TextField(label="Email", autofill_hints=[ft.AutofillHint.EMAIL, ft.AutofillHint.USERNAME], width=300)
+    password_input = ft.TextField(label="Password", password=True, can_reveal_password=True, autofill_hints=[ft.AutofillHint.PASSWORD], width=300)
     login_error = StatusText()
 
     # Check if credentials exist in env/file to pre-fill
@@ -195,28 +184,6 @@ async def main(page: ft.Page):
 
     login_button = ft.Button("Login", on_click=handle_login)
     
-    login_view = ft.View(
-        "/",
-        [
-            ft.Column(
-                [
-                    # ft.Text("Calimoto Exporter", size=30, weight=ft.FontWeight.BOLD, color="white"),
-                    # ft.Text("Login to your account", size=16, color="white"),
-                    ft.Text("Calimoto Exporter", size=30, weight=ft.FontWeight.BOLD),
-                    ft.Text("Login to your account", size=16),
-                    email_input,
-                    password_input,
-                    login_button,
-                    login_error
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                spacing=20,
-                expand=True
-            )
-        ],
-        # bgcolor="#2196F3"  # Blue background
-    )
 
     # --- Dashboard View ---
     
@@ -230,7 +197,6 @@ async def main(page: ft.Page):
         
         try:
             items = await client.get_items(mode)
-            current_items = items
             
             # Sort by date
             def get_date(r):
@@ -375,7 +341,7 @@ async def main(page: ft.Page):
     )
     
     # Create login controls  
-    login_container = ft.Column(
+    login_form = ft.Column(
         [
             ft.Text("Calimoto Exporter", size=32, weight=ft.FontWeight.BOLD),
             ft.Text("Login to your account", size=16),
@@ -390,6 +356,7 @@ async def main(page: ft.Page):
         spacing=15,
         expand=True
     )
+    login_container = ft.AutofillGroup(content=login_form, expand=True)
     
     # Main content container
     main_content = ft.Container(expand=True)
