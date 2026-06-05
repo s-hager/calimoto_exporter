@@ -3,7 +3,7 @@ EXCLUDES := .git,.github,__pycache__,.direnv,build,.credentials,.envrc,.gitignor
 # Add --yes flag for non-interactive mode in CI/CD
 CI_FLAG := $(if $(CI),--yes,)
 
-.PHONY: run run-web build-web apk debug-apk clean install-deps
+.PHONY: run run-web build-web apk debug-apk clean install-deps test
 
 # Default target
 run:
@@ -14,6 +14,9 @@ run-web:
 
 install-deps:
 	mkdir -p __pypackages__ && pip install -r requirements.txt --target __pypackages__ --upgrade
+
+test:
+	python -m unittest test_calimoto.py
 
 # does not work because of CORS
 build-web: install-deps

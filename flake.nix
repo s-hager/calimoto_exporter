@@ -169,6 +169,9 @@
     in {
       devShells.x86_64-linux.default = pkgs.mkShell {
         packages = [ 
+          pythonEnv
+          pkgs.android-tools # adb
+          pkgs.direnv
           # run with: run-test-emulator
           (pkgs.androidenv.emulateApp {
             name = "emulate-MyAndroidApp";
@@ -187,13 +190,9 @@
             # package = "com.rovio.angrybirds";
             # activity = "com.rovio.fusion.App";
           })
-          pkgs.android-tools
         ];
 
         buildInputs = with pkgs; [
-          direnv
-          pythonEnv
-          # zenity
         ];
         QT_QPA_PLATFORM = "xcb";
         shellHook = ''

@@ -224,6 +224,107 @@ class CalimotoClient:
             raise ValueError("Invalid points data format received.")
 
     @staticmethod
+    def decode_polyline(polyline_str, precision=6):
+        """
+        Decodes a Google polyline string into a list of (lat, lon) coordinates.
+        GraphHopper/Calimoto routing uses a precision of 6 decimals.
+        """
+        factor = 10 ** precision
+        index, lat, lng = 0, 0, 0
+        coordinates = []
+        
+        try:
+            while index < len(polyline_str):
+                # Decode latitude
+                shift, result = 0, 0
+                while True:
+                    b = ord(polyline_str[index]) - 63
+                    index += 1
+                    result |= (b & 0x1f) << shift
+                    shift += 5
+                    if b < 0x20:
+                        break
+                
+                # Sign bit
+                if (result & 1):
+                    dlat = ~(result >> 1)
+                else:
+                    dlat = result >> 1
+                lat += dlat
+                
+                # Decode longitude
+                shift, result = 0, 0
+                while True:
+                    b = ord(polyline_str[index]) - 63
+                    index += 1
+                    result |= (b & 0x1f) << shift
+                    shift += 5
+                    if b < 0x20:
+                        break
+                        
+                # Sign bit
+                if (result & 1):
+                    dlng = ~(result >> 1)
+                else:
+                    dlng = result >> 1
+                lng += dlng
+                
+                coordinates.append((lat / factor, lng / factor))
+        except IndexError:
+            # Handle truncated or malformed polyline strings gracefully
+            pass
+            
+        return coordinates
+
+
+    async def get_routing_route(self, url=None, points=None, routing_profile='motorcycle'):
+        """
+        Queries GraphHopper routing API and returns the decoded list of points.
+        Can accept a full URL, or a list of point coordinates.
+        """
+        if url:
+            if not url.startswith("http"):
+                url = "https://graphhopper.calimoto.com/routingRoute?" + url.lstrip("?")
+        elif points:
+            if len(points) < 2:
+                raise ValueError("At least 2 points are required for routing.")
+            
+            query_parts = []
+            for lat, lon in points:
+                query_parts.append(f"point={lat},{lon}")
+            
+            query_parts.append(f"routing_profiles={routing_profile}")
+            query_parts.append("device=web")
+            
+            url = "https://graphhopper.calimoto.com/routingRoute?" + "&".join(query_parts)
+        else:
+            raise ValueError("Either url or points must be provided.")
+
+        response = await self.client.get(url)
+        if response.status_code != 200:
+            raise Exception(f"GraphHopper API returned status code {response.status_code}: {response.text}")
+        
+        data = response.json()
+        if "error" in data:
+            raise Exception(f"GraphHopper API returned error: {data['error']}")
+            
+        paths = data.get("paths", [])
+        if not paths:
+            raise Exception("No paths found in routing response.")
+            
+        path = paths[0]
+        points_encoded = path.get("points_encoded", False)
+        encoded_points = path.get("points", "")
+        
+        if points_encoded:
+            decoded_points = self.decode_polyline(encoded_points)
+        else:
+            decoded_points = encoded_points
+            
+        return decoded_points
+
+
+    @staticmethod
     def sanitize_filename(name):
         # Handle navigation arrows as requested (-> for →, <-> for ⇄)
         name = name.replace('→', '->').replace('⇄', '<->')
