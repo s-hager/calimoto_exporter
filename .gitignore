@@ -3,3 +3,6 @@
 build
 __pycache__
 __pypackages__
+routes_gpx/
+*.csv
+*.gpx

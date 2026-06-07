@@ -159,7 +159,7 @@
       };
       pythonEnv = pkgs.python313.withPackages (ps: [
         ps.aiohttp
-        # ps.httpx
+        ps.httpx
         ps.flet
         ps.flet-cli
         ps.flet-secure-storage
