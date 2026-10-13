@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calimoto Exporter</title>
+  <link rel="icon" type="image/png" href="/icon.png">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' fill='%23ff5722'><path d='M216,120a41,41,0,0,0-6.6.55l-5.82-15.14A55.64,55.64,0,0,1,216,104a8,8,0,0,0,0-16H196.88L183.47,53.13A8,8,0,0,0,176,48H144a8,8,0,0,0,0,16h26.51l9.23,24H152c-18.5,0-33.5,4.31-43.37,12.46a16,16,0,0,1-16.76,2.07c-10.58-4.81-73.29-30.12-73.8-30.26a8,8,0,0,0-5,15.19S68.57,109.4,79.6,120.4A55.67,55.67,0,0,1,95.43,152H79.2a40,40,0,1,0,0,16h52.12a31.91,31.91,0,0,0,30.74-23.1,56,56,0,0,1,26.59-33.72l5.82,15.13A40,40,0,1,0,216,120ZM40,168H62.62a24,24,0,1,1,0-16H40a8,8,0,0,0,0,16Zm176,16a24,24,0,0,1-15.58-42.23l8.11,21.1a8,8,0,1,0,14.94-5.74L215.35,136l.65,0a24,24,0,0,1,0,48Z'/></svg>">
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card-bg: #181b22;
+      --card-border: #282d37;
+      --text-main: #f0f3f6;
+      --text-muted: #8b949e;
+      --accent: #ff5722;
+      --accent-hover: #f4511e;
+      --accent-subtle: rgba(255, 87, 34, 0.15);
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --success: #10b981;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+    }
+
+    /* Header */
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--card-border);
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+      text-decoration: none;
+    }
+
+    .brand svg {
+      width: 26px;
+      height: 26px;
+      fill: var(--accent);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    /* Container */
+    main {
+      flex: 1;
+      max-width: 960px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem 1rem;
+    }
+
+    /* Buttons & Inputs */
+    button, .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.55rem 1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease-in-out;
+      text-decoration: none;
+      color: #fff;
+    }
+
+    .btn-primary {
+      background-color: var(--accent);
+    }
+    .btn-primary:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background-color: #21262d;
+      border-color: var(--card-border);
+      color: var(--text-main);
+    }
+    .btn-secondary:hover {
+      background-color: #30363d;
+      border-color: #484f58;
+    }
+
+    .btn-danger {
+      background-color: transparent;
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+    .btn-danger:hover {
+      background-color: rgba(239, 68, 68, 0.15);
+      border-color: var(--danger);
+    }
+
+    .btn-sm {
+      padding: 0.35rem 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      background: #0d1117;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-subtle);
+    }
+
+    /* Login Card */
+    .login-container {
+      max-width: 420px;
+      margin: 3.5rem auto;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .login-header svg {
+      width: 48px;
+      height: 48px;
+      fill: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+
+    .login-header h1 {
+      font-size: 1.4rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .login-header p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    .form-group {
+      margin-bottom: 1.15rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .alert-error {
+      background-color: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .alert-info {
+      background-color: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #93c5fd;
+    }
+
+    /* Dashboard Controls */
+    .dashboard-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .nav-tabs {
+      display: flex;
+      background: #0d1117;
+      padding: 0.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      gap: 0.25rem;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.45rem 1rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .tab-btn.active {
+      background: #21262d;
+      color: var(--text-main);
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 220px;
+      max-width: 360px;
+      position: relative;
+    }
+
+    .search-box input {
+      padding-left: 2.2rem;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      fill: var(--text-muted);
+      pointer-events: none;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      padding: 0 0.25rem;
+    }
+
+    /* Items List */
+    .items-grid {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .item-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .item-card:hover {
+      border-color: #3b4252;
+      transform: translateY(-1px);
+    }
+
+    .item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .item-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 0.25rem;
+    }
+
+    .item-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .meta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      fill: var(--card-border);
+      margin-bottom: 0.75rem;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #1f242c;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      z-index: 100;
+      transform: translateY(150%);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+    }
+
+    .spinner {
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 640px) {
+      .dashboard-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .search-box {
+        max-width: 100%;
+      }
+      .item-card {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .item-card button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="#" class="brand">
+      <svg viewBox="0 0 256 256"><path d="M216,120a41,41,0,0,0-6.6.55l-5.82-15.14A55.64,55.64,0,0,1,216,104a8,8,0,0,0,0-16H196.88L183.47,53.13A8,8,0,0,0,176,48H144a8,8,0,0,0,0,16h26.51l9.23,24H152c-18.5,0-33.5,4.31-43.37,12.46a16,16,0,0,1-16.76,2.07c-10.58-4.81-73.29-30.12-73.8-30.26a8,8,0,0,0-5,15.19S68.57,109.4,79.6,120.4A55.67,55.67,0,0,1,95.43,152H79.2a40,40,0,1,0,0,16h52.12a31.91,31.91,0,0,0,30.74-23.1,56,56,0,0,1,26.59-33.72l5.82,15.13A40,40,0,1,0,216,120ZM40,168H62.62a24,24,0,1,1,0-16H40a8,8,0,0,0,0,16Zm176,16a24,24,0,0,1-15.58-42.23l8.11,21.1a8,8,0,1,0,14.94-5.74L215.35,136l.65,0a24,24,0,0,1,0,48Z"/></svg>
+      Calimoto Exporter
+    </a>
+    <div id="header-user-actions" class="header-actions" style="display: none;">
+      <button id="btn-export-all" class="btn btn-primary btn-sm" onclick="exportAll()">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+        Export All (.zip)
+      </button>
+      <button id="btn-refresh" class="btn btn-secondary btn-sm" onclick="refreshItems()">
+        <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+      </button>
+      <button class="btn btn-danger btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- LOGIN VIEW -->
+    <div id="login-view" class="login-container">
+      <div class="login-header">
+        <svg viewBox="0 0 256 256"><path d="M216,120a41,41,0,0,0-6.6.55l-5.82-15.14A55.64,55.64,0,0,1,216,104a8,8,0,0,0,0-16H196.88L183.47,53.13A8,8,0,0,0,176,48H144a8,8,0,0,0,0,16h26.51l9.23,24H152c-18.5,0-33.5,4.31-43.37,12.46a16,16,0,0,1-16.76,2.07c-10.58-4.81-73.29-30.12-73.8-30.26a8,8,0,0,0-5,15.19S68.57,109.4,79.6,120.4A55.67,55.67,0,0,1,95.43,152H79.2a40,40,0,1,0,0,16h52.12a31.91,31.91,0,0,0,30.74-23.1,56,56,0,0,1,26.59-33.72l5.82,15.13A40,40,0,1,0,216,120ZM40,168H62.62a24,24,0,1,1,0-16H40a8,8,0,0,0,0,16Zm176,16a24,24,0,0,1-15.58-42.23l8.11,21.1a8,8,0,1,0,14.94-5.74L215.35,136l.65,0a24,24,0,0,1,0,48Z"/></svg>
+        <h1>Sign In</h1>
+        <p>Log in with your Calimoto account credentials</p>
+      </div>
+
+      <div id="login-error" class="alert alert-error"></div>
+
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" required autocomplete="username" placeholder="rider@example.com">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" required autocomplete="current-password" placeholder="••••••••">
+        </div>
+        <div class="form-group">
+          <label class="checkbox-group">
+            <input type="checkbox" id="remember-me">
+            Remember credentials on this browser
+          </label>
+        </div>
+        <button type="submit" id="login-btn" class="btn btn-primary" style="width: 100%;">
+          Sign In
+        </button>
+      </form>
+    </div>
+
+    <!-- DASHBOARD VIEW -->
+    <div id="dashboard-view" style="display: none;">
+      <div class="dashboard-toolbar">
+        <div class="nav-tabs">
+          <button id="tab-routes" class="tab-btn active" onclick="switchMode('routes')">
+            Routes (<span id="count-routes">0</span>)
+          </button>
+          <button id="tab-tracks" class="tab-btn" onclick="switchMode('tracks')">
+            Tracks (<span id="count-tracks">0</span>)
+          </button>
+        </div>
+
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input type="text" id="search-input" placeholder="Search by name..." oninput="handleSearch()">
+        </div>
+      </div>
+
+      <div class="stats-bar">
+        <span id="stats-text">Loading...</span>
+      </div>
+
+      <div id="items-container" class="items-grid"></div>
+
+      <div id="empty-state" class="empty-state" style="display: none;">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        <p>No items found.</p>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast" class="toast">
+    <div id="toast-spinner" class="spinner" style="display: none;"></div>
+    <span id="toast-text">Notification</span>
+  </div>
+
+  <script>
+    let currentMode = 'routes';
+    let cachedItems = { routes: [], tracks: [] };
+    let searchQuery = '';
+
+    // Check login state on load
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Check saved credentials
+      const savedEmail = localStorage.getItem('calimoto_email');
+      // Automatically unregister stale Service Workers (e.g. from previous Flutter/Flet runs)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for (const reg of registrations) {
+            reg.unregister();
+          }
+        });
+      }
+
+      const savedPass = localStorage.getItem('calimoto_password');
+      if (savedEmail) {
+        document.getElementById('email').value = savedEmail;
+        document.getElementById('remember-me').checked = true;
+      }
+      if (savedPass) {
+        document.getElementById('password').value = savedPass;
+      }
+
+      try {
+        const res = await fetch('/api/me');
+        if (res.ok) {
+          showDashboard();
+          loadItems('routes');
+          loadItems('tracks');
+        } else {
+          showLogin();
+        }
+      } catch (err) {
+        showLogin();
+      }
+    });
+
+    function showToast(message, loading = false) {
+      const toast = document.getElementById('toast');
+      const text = document.getElementById('toast-text');
+      const spinner = document.getElementById('toast-spinner');
+      text.innerText = message;
+      spinner.style.display = loading ? 'block' : 'none';
+      toast.classList.add('show');
+      if (!loading) {
+        setTimeout(() => toast.classList.remove('show'), 3500);
+      }
+    }
+
+    function hideToast() {
+      document.getElementById('toast').classList.remove('show');
+    }
+
+    function showLogin() {
+      document.getElementById('login-view').style.display = 'block';
+      document.getElementById('dashboard-view').style.display = 'none';
+      document.getElementById('header-user-actions').style.display = 'none';
+    }
+
+    function showDashboard() {
+      document.getElementById('login-view').style.display = 'none';
+      document.getElementById('dashboard-view').style.display = 'block';
+      document.getElementById('header-user-actions').style.display = 'flex';
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const remember = document.getElementById('remember-me').checked;
+      const btn = document.getElementById('login-btn');
+      const errorDiv = document.getElementById('login-error');
+
+      errorDiv.style.display = 'none';
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div> Signing In...';
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          if (remember) {
+            localStorage.setItem('calimoto_email', email);
+            localStorage.setItem('calimoto_password', password);
+          } else {
+            localStorage.removeItem('calimoto_email');
+            localStorage.removeItem('calimoto_password');
+          }
+          showDashboard();
+          await Promise.all([loadItems('routes'), loadItems('tracks')]);
+        } else {
+          errorDiv.innerText = data.detail || 'Login failed. Please verify credentials.';
+          errorDiv.style.display = 'block';
+        }
+      } catch (err) {
+        errorDiv.innerText = 'Connection error: ' + err.message;
+        errorDiv.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Sign In';
+      }
+    }
+
+    async function logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      cachedItems = { routes: [], tracks: [] };
+      showLogin();
+      showToast('Logged out');
+    }
+
+    async function loadItems(mode) {
+      try {
+        const res = await fetch(`/api/items?mode=${mode}`);
+        if (!res.ok) {
+          if (res.status === 401) return logout();
+          throw new Error('Failed to fetch ' + mode);
+        }
+        const data = await res.json();
+        cachedItems[mode] = data;
+        document.getElementById(`count-${mode}`).innerText = data.length;
+        if (currentMode === mode) {
+          renderItems();
+        }
+      } catch (err) {
+        showToast('Error loading ' + mode + ': ' + err.message);
+      }
+    }
+
+    async function refreshItems() {
+      showToast('Refreshing...', true);
+      await Promise.all([loadItems('routes'), loadItems('tracks')]);
+      hideToast();
+      showToast('Refreshed successfully');
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      document.getElementById('tab-routes').classList.toggle('active', mode === 'routes');
+      document.getElementById('tab-tracks').classList.toggle('active', mode === 'tracks');
+      renderItems();
+    }
+
+    function handleSearch() {
+      searchQuery = document.getElementById('search-input').value.toLowerCase();
+      renderItems();
+    }
+
+    function renderItems() {
+      const container = document.getElementById('items-container');
+      const emptyState = document.getElementById('empty-state');
+      const statsText = document.getElementById('stats-text');
+      const items = cachedItems[currentMode] || [];
+
+      const filtered = items.filter(item => {
+        const name = (item.name || 'Unnamed').toLowerCase();
+        return name.includes(searchQuery);
+      });
+
+      const totalDist = filtered.reduce((acc, it) => acc + (it.distance || 0), 0) / 1000;
+      statsText.innerText = `Showing ${filtered.length} of ${items.length} ${currentMode} • ${Math.round(totalDist).toLocaleString()} km total`;
+
+      container.innerHTML = '';
+      if (filtered.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+      }
+      emptyState.style.display = 'none';
+
+      filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'item-card';
+
+        const name = escapeHtml(item.name || 'Unnamed');
+        const dateStr = (item.createdAt || item.timeCreated?.iso || '').slice(0, 10);
+        const distKm = Math.round((item.distance || 0) / 100) / 10;
+
+        card.innerHTML = `
+          <div class="item-info">
+            <div class="item-title" title="${name}">${name}</div>
+            <div class="item-meta">
+              <span class="meta-badge">
+                <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10z"/></svg>
+                ${dateStr || 'No date'}
+              </span>
+              <span>•</span>
+              <span class="meta-badge">
+                <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                ${distKm} km
+              </span>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="downloadItem('${item.objectId}', '${currentMode}')">
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            GPX
+          </button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function downloadItem(id, mode) {
+      showToast('Downloading GPX...');
+      const url = `/api/download?mode=${mode}&id=${encodeURIComponent(id)}`;
+      window.location.href = url;
+    }
+
+    async function exportAll() {
+      const btn = document.getElementById('btn-export-all');
+      btn.disabled = true;
+      showToast('Generating zip archive (this may take a few seconds)...', true);
+
+      try {
+        // Trigger download via direct location or hidden iframe/link
+        const link = document.createElement('a');
+        link.href = '/api/export-all';
+        link.download = 'calimoto_export.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => {
+          hideToast();
+          showToast('Download started!');
+          btn.disabled = false;
+        }, 1500);
+      } catch (err) {
+        hideToast();
+        showToast('Export failed: ' + err.message);
+        btn.disabled = false;
+      }
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+  </script>
+</body>
+</html>

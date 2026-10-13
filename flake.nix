@@ -15,7 +15,7 @@
 # run it with ./result/bin/run-test-emulator 
 
 {
-  description = "react native flake";
+  description = "Calimoto Exporter";
 
   inputs.nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
 
@@ -159,16 +159,95 @@
       };
       pythonEnv = pkgs.python313.withPackages (ps: [
         ps.aiohttp
-        # ps.httpx
+        ps.httpx
+        ps.fastapi
+        ps.uvicorn
         ps.flet
         ps.flet-cli
         ps.flet-secure-storage
         ps.pip
-        # ps.msgpack
+        # ps.cryptography
+        ps.msgpack
       ]);
+
+      webPackage = pkgs.stdenv.mkDerivation {
+        pname = "calimoto-exporter-web";
+        version = "0.1.0";
+        src = ./.;
+        dontBuild = true;
+        nativeBuildInputs = [ pkgs.makeWrapper ];
+        installPhase = ''
+          mkdir -p $out/lib/calimoto-exporter $out/bin
+          cp calimoto_client.py web_app.py $out/lib/calimoto-exporter/
+          cp -r static $out/lib/calimoto-exporter/
+          cp -r assets $out/lib/calimoto-exporter/
+          makeWrapper ${pkgs.python313.withPackages (ps: [ ps.fastapi ps.uvicorn ps.httpx ])}/bin/python $out/bin/calimoto-exporter-web \
+            --add-flags "$out/lib/calimoto-exporter/web_app.py" \
+            --set PYTHONPATH "$out/lib/calimoto-exporter"
+        '';
+      };
     in {
+      packages.x86_64-linux = {
+        default = webPackage;
+        calimoto-exporter-web = webPackage;
+      };
+
+      apps.x86_64-linux.default = {
+        type = "app";
+        program = "${self.packages.x86_64-linux.default}/bin/calimoto-exporter-web";
+      };
+
+      nixosModules = {
+        default = self.nixosModules.calimoto-exporter;
+        calimoto-exporter = { config, lib, pkgs, ... }:
+          let
+            cfg = config.services.calimoto-exporter;
+          in {
+            options.services.calimoto-exporter = {
+              enable = lib.mkEnableOption "Calimoto Exporter Web Service";
+              package = lib.mkOption {
+                type = lib.types.package;
+                default = self.packages.${pkgs.system}.default;
+                description = "Package to use for Calimoto Exporter.";
+              };
+              port = lib.mkOption {
+                type = lib.types.port;
+                default = 8080;
+                description = "Port to listen on.";
+              };
+              host = lib.mkOption {
+                type = lib.types.str;
+                default = "0.0.0.0";
+                description = "Host address to bind to.";
+              };
+              openFirewall = lib.mkOption {
+                type = lib.types.bool;
+                default = false;
+                description = "Whether to open the port in the firewall.";
+              };
+            };
+
+            config = lib.mkIf cfg.enable {
+              networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall [ cfg.port ];
+
+              systemd.services.calimoto-exporter = {
+                description = "Calimoto Exporter Web Service";
+                wantedBy = [ "multi-user.target" ];
+                after = [ "network.target" ];
+                serviceConfig = {
+                  ExecStart = "${cfg.package}/bin/calimoto-exporter-web --host ${cfg.host} --port ${toString cfg.port}";
+                  Restart = "always";
+                  RestartSec = "5s";
+                  DynamicUser = true;
+                };
+              };
+            };
+          };
+      };
+
       devShells.x86_64-linux.default = pkgs.mkShell {
         packages = [ 
+          pythonEnv
           # run with: run-test-emulator
           (pkgs.androidenv.emulateApp {
             name = "emulate-MyAndroidApp";

@@ -1,3 +1,5 @@
 flet==0.85.0
 flet-secure-storage==0.85.0
 httpx
+fastapi
+uvicorn

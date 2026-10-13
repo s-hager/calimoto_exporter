@@ -1,6 +1,5 @@
 import flet as ft
 import asyncio
-import base64
 import json
 from pathlib import Path
 
@@ -313,17 +312,17 @@ async def main(page: ft.Page):
             ft.VerticalDivider(width=1),
             ft.Column(
                 [
+                    ft.Text("Dashboard", size=24, weight=ft.FontWeight.BOLD),
                     ft.Row(
                         [
-                            ft.Text("Dashboard", size=24, weight=ft.FontWeight.BOLD),
                             ft.Row(
                                 [
+                                    ft.Button("Logout", on_click=logout, bgcolor=ft.Colors.RED_900, color=ft.Colors.WHITE),
                                     ft.IconButton(
                                         icon=ft.Icons.REFRESH,
                                         tooltip="Refresh list",
                                         on_click=handle_refresh,
                                     ),
-                                    ft.Button("Logout", on_click=logout, bgcolor=ft.Colors.RED_900, color=ft.Colors.WHITE),
                                 ],
                                 spacing=10,
                             ),

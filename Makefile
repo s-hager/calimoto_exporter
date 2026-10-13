@@ -3,7 +3,7 @@ EXCLUDES := .git,.github,__pycache__,.direnv,build,.credentials,.envrc,.gitignor
 # Add --yes flag for non-interactive mode in CI/CD
 CI_FLAG := $(if $(CI),--yes,)
 
-.PHONY: run run-web build-web apk debug-apk clean install-deps
+.PHONY: run run-web run-server build-web apk debug-apk clean install-deps
 
 # Default target
 run:
@@ -11,6 +11,15 @@ run:
 
 run-web:
 	flet run --web frontend.py
+
+run-server:
+	python web_app.py --port 8080
+
+run-android:
+	flet run --android frontend.py
+
+run-ios:
+	flet run --ios frontend.py
 
 install-deps:
 	mkdir -p __pypackages__ && pip install -r requirements.txt --target __pypackages__ --upgrade
